@@ -8,10 +8,11 @@
 #include <stdio.h>
 #include <errno.h>
 #include <ctype.h>
-//#include <sys/wait.h>
+#include <sys/wait.h>
 #include <sys/time.h>
 #include <stdbool.h>
 
 #define ERROR 255
 #define CLIENTE "Cliente"
 #define SERVIDOR "Servidor"
+
