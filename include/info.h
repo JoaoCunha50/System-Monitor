@@ -13,3 +13,6 @@
 #include <stdbool.h>
 
 #define ERROR 255
+#define CLIENTE "Cliente"
+#define SERVIDOR "Servidor"
+
