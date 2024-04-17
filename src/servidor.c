@@ -81,3 +81,4 @@ void executa_u(char *args, int fifo) {
     dup2(fifo, STDOUT_FILENO);
     freeargs(lista_argumentos, n_args);
 }
+
