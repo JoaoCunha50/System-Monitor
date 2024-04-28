@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <ctype.h>
-//#include <sys/wait.h>
+#include <sys/wait.h>
 #include <sys/time.h>
 #include <stdbool.h>
 
@@ -30,3 +30,4 @@ typedef struct executados
     char *prog_name;
     float exec_time;
 } Executados;
+
