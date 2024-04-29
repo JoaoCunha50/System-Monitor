@@ -1,54 +1,36 @@
 #include "../include/info.h"
 
-char **parse_args(char *args, int *n_args)
-{
-    (*n_args) = 0;
-    char **lista_argumentos = malloc(sizeof(char *));
-    if (lista_argumentos == NULL)
-        perror("Falha ao alocar memória\n");
-
-    char *nome_prog = strtok(args, " ");
-    char *args2 = strtok(NULL, "");
-    lista_argumentos[0] = nome_prog;
-    (*n_args)++;
-
-    for (; args2 != NULL; args2 = strtok(NULL, ""))
-    {
-        (*n_args)++;
-        lista_argumentos = realloc(lista_argumentos, sizeof(char *) * (*n_args));
-        lista_argumentos[*n_args - 1] = strdup(args);
-    }
-    lista_argumentos = realloc(lista_argumentos, sizeof(char *) * ((*n_args) + 1)); // Null no ultimo slot do array para satisfazer execvp
-    lista_argumentos[(*n_args)] = NULL;
-
-    return lista_argumentos;
-}
-
-void freeargs(char **lista_argumentos, int n_args)
-{
-    for (int i = 1; i < n_args; i++)
-    {
-        free(lista_argumentos[i]);
-    }
-    free(lista_argumentos);
-}
-
 // executa com a flag -u
 void executa_u(char *args, int fifo)
 {
-    int n_args;
-    char **lista_argumentos = parse_args(args, &n_args);
+    char *prog_name = strtok(args, " ");
+    char *arg_str = strtok(NULL, "");
+    char **lista_argumentos = malloc(sizeof(char *));
+    lista_argumentos[0] = prog_name;
+    int num_args = 1;
+
+    while (arg_str != NULL)
+    {
+        num_args++;
+        lista_argumentos = realloc(lista_argumentos, sizeof(char *) * num_args);
+        lista_argumentos[num_args - 1] = strdup(arg_str);
+        arg_str = strtok(NULL, "");
+    }
+
+    lista_argumentos = realloc(lista_argumentos, sizeof(char *) * (num_args + 1));
+    lista_argumentos[num_args] = NULL;
+    printf("Cheguei\n");
 
     pid_t pid = 0;
     int fd[2];
     pipe(fd);
 
-    if (fork() != 0)
+    if (fork() == -1)
     {
         write(2, "Erro ao criar processo-filho\n", 31);
         close(fd[1]);
         read(fd[0], &pid, sizeof(pid_t));
-        _exit(ERROR);
+        return 1;
     }
     else
     {
@@ -84,54 +66,54 @@ void executa_u(char *args, int fifo)
     char message_to_fifo2[1024];
     sprintf(message_to_fifo2, "EXECUTADO;PID: %d;%s;%ld;%ld", getpid(), lista_argumentos[0], time2.tv_sec, time2.tv_usec);
     write(fifo, message_to_fifo2, 1024);
+    for (int i = 1; i < num_args; i++)
+    {
+        free(lista_argumentos[i]);
+    }
+    free(lista_argumentos);
     _exit(0);
-
-    freeargs(lista_argumentos, n_args);
 }
 
 int main(int argc, char *argv[])
 {
-    if (mkfifo(CLIENTE, 0644) < 0)
-    {
-        write(2, "Error making Client FIFO\n", 25);
-    }
-
-    if (mkfifo(SERVIDOR, 0644) < 0)
+    if (mkfifo(FIFO, 0666) < 0)
     {
         write(2, "Error making Server FIFO\n", 25);
+        return 1;
     }
 
-    int fifo_leitura = open(CLIENTE, O_RDONLY);
-    if (fifo_leitura < 0)
-    {
-        write(2, "Error opening reading fifo.\n", 29);
-        exit(EXIT_FAILURE);
-    }
-
-    int fifo_escrita = open(SERVIDOR, O_WRONLY);
-    if (fifo_escrita < 0)
-    {
-        write(2, "Error opening writing fifo.\n", 29);
-        exit(EXIT_FAILURE);
-    }
-
-    if (argc < 2)
+    if (argc < 3)
     {
         write(2, "Invalid number of arguments.\n", 30);
-        exit(EXIT_FAILURE);
+        return 1;
     }
 
+    char output[128];
+    snprintf(output, sizeof(output), "%s/Historico.log", argv[1]);
+
+    printf("Servidor operacional ...\n");
+
     char buffer[1024];
+    int flag = 1;
 
-    while (read(fifo_leitura, buffer, 1024) == 0)
+    while (flag)
     {
-        char *input = strtok(NULL, " ");
-
-        if(strcmp(input, "-u") == 0)
+        int fifo_servidor = open(FIFO, O_RDONLY);
+        printf("cheguei\n");
+        if (fifo_servidor < 0)
         {
-            input = strtok(NULL, " ");
-            executa_u(input, fifo_escrita);
+            write(2, "Error opening reading fifo.\n", 29);
+            return 1;
         }
+        if (read(fifo_servidor, buffer, 1024) <= 0)
+        {
+            write(2, "Erro ao ler input\n", 18);
+            return 1;
+        }
+        printf("cheguei ao close\n");
+        close(fifo_servidor);
+
+        executa_u(buffer, fifo_servidor);
     }
     return 0;
 }
