@@ -1,13 +1,15 @@
 #include "../include/info.h"
 
-int sizeofExecutados(Executados *executados)
+int sizeofComands(Comandos *comands)
 {
-    return sizeof(executados);
+    int tamanho = sizeof(comands);
+    return tamanho;
 }
 
-int sizeofExecutando(Executando *executando)
+int compareCommands(const void *a, const void *b)
 {
-    return sizeof(executando);
+    int compare = ((Comandos *)b)->pid - ((Comandos *)a)->pid;
+    return compare;
 }
 
 int main(int argc, char *argv[])
@@ -19,10 +21,8 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    Executados *prog_executados = malloc(sizeofExecutados(prog_executados) * 15);
-    int tamanho_executados = 15, nr_executados = 0;
-    Executando *prog_executando = malloc(sizeofExecutados(prog_executando) * 15);
-    int tamanho_executando = 15, nr_executando = 0;
+    Comandos *lista_comandos = malloc(sizeofComands(lista_comandos) * 15);
+    int tamanho_comandos = 15, nr_comandos = 0;
 
     int flag = 0;
 
@@ -30,25 +30,25 @@ int main(int argc, char *argv[])
     {
         if (strcmp(argv[1], "status") == 0)
         {
-            write(fifo_servidor, "Programas executados: \n", 23);
-            for (int i = 0; i < nr_executados; i++)
+            for (int i = 0; i < nr_comandos; i++)
             {
                 struct timeval tv_now;
                 gettimeofday(&tv_now, NULL);
                 char status[100];
-                sprintf(status, "PID: %d; Programa: %s; Tempo de Execução: %lld ms\n", prog_executados[i].pid, prog_executados[i].prog_name, prog_executados[i].exec_time);
+                if (strcmp(lista_comandos[i].status, "EXECUTED"))
+                {
+                    sprintf(status, "PID: %d; Programa: %s; Tempo de Execução: %lld ms\n", lista_comandos[i].pid, lista_comandos[i].prog_name, lista_comandos[i].exec_time);
+                }
+                else if (strcmp(lista_comandos[i].status, "EXECUTING"))
+                {
+                    sprintf(status, "PID: %d; Programa: %s;\n", lista_comandos[i].pid, lista_comandos[i].prog_name);
+                }
+                else if (strcmp(lista_comandos[i].status, "QUEUED"))
+                {
+                    sprintf(status, "PID: %d; Programa: %s; Tempo Estimado: %d;\n", lista_comandos[i].pid, lista_comandos[i].prog_name, lista_comandos[i].estimated_time);
+                }
                 write(fifo_servidor, status, sizeof(status));
             }
-            write(fifo_servidor, "Programas em execução: \n", 25);
-            for (int i = 0; i < nr_executando; i++)
-            {
-                struct timeval tv_now;
-                gettimeofday(&tv_now, NULL);
-                char status[100];
-                sprintf(status, "PID: %d; Programa: %s;\n", prog_executando[i].pid, prog_executando[i].prog_name);
-                write(fifo_servidor, status, sizeof(status));
-            }
-            write(fifo_servidor, "Finished", 9);
         }
         else if (strcmp(argv[1], "execute") == 0)
         {
@@ -63,8 +63,7 @@ int main(int argc, char *argv[])
             break;
         }
     }
-    free(prog_executados);
-    free(prog_executando);
+    free(lista_comandos);
 
     return 0;
 }
