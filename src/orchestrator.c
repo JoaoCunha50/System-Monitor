@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
         return 1;
     }
   
-    if (access(CLIENTE, F_OK) != -1) // usamos a função "acess" para tentar aceder ao FIFO, ou seja, verificar se ele existe
+    if (access(FIFO, F_OK) != -1) // usamos a função "acess" para tentar aceder ao FIFO, ou seja, verificar se ele existe
     {
         write(2, "Client FIFO has already been created\n", 38);
     }
