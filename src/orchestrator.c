@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
         write(2, "Error making Server FIFO\n", 25);
         return 1;
     }
-  
+
     if (access(FIFO, F_OK) != -1) // usamos a função "acess" para tentar aceder ao FIFO, ou seja, verificar se ele existe
     {
         write(2, "Client FIFO has already been created\n", 38);
@@ -100,9 +100,8 @@ int main(int argc, char *argv[])
     printf("Servidor operacional ...\n");
 
     char buffer[1024];
-    int flag = 1;
 
-    while (flag)
+    while (true)
     {
         int fifo_servidor = open(FIFO, O_RDONLY);
         printf("cheguei\n");

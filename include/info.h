@@ -8,26 +8,18 @@
 #include <stdio.h>
 #include <errno.h>
 #include <ctype.h>
-//#include <sys/wait.h>
+// #include <sys/wait.h>
 #include <sys/time.h>
 #include <stdbool.h>
 
 #define ERROR 255
 #define FIFO "fifo"
 
-
-typedef struct executando
+typedef struct comandos
 {
     int pid;
     char *prog_name;
-    long int secs;
-    long int usec;
-} Executando;
-
-typedef struct executados
-{
-    int pid;
-    char *prog_name;
+    char *status; // @enum QUEUED; EXECUTED; EXECUTING
     float exec_time;
-} Executados;
-
+    float estimated_time;
+} Comandos;
