@@ -91,14 +91,28 @@ void executa_u(char *args, int fifo)
 
 int main(int argc, char *argv[])
 {
-    if (mkfifo(CLIENTE, 0644) < 0)
+    if (access(CLIENTE, F_OK) != -1) // usamos a função "acess" para tentar aceder ao FIFO, ou seja, verificar se ele existe
     {
-        write(2, "Error making Client FIFO\n", 25);
+        write(2, "Client FIFO has already been created\n", 38);
+    }
+    else
+    {
+        if (mkfifo(CLIENTE, 0644) < 0)
+        {
+            write(2, "Error making Client FIFO\n", 25);
+        }
     }
 
-    if (mkfifo(SERVIDOR, 0644) < 0)
+    if (access(SERVIDOR, F_OK) != -1) // tal como no caso anterior, utilizamos a função "acess"
     {
-        write(2, "Error making Server FIFO\n", 25);
+        write(2, "Server FIFO has already been created\n", 38);
+    }
+    else
+    {
+        if (mkfifo(SERVIDOR, 0644) < 0) // caso o retorno da função seja <0 (-1), houve um erro na criação do fifo
+        {
+            write(2, "Error making Server FIFO\n", 25);
+        }
     }
 
     int fifo_leitura = open(CLIENTE, O_RDONLY);
@@ -127,7 +141,7 @@ int main(int argc, char *argv[])
     {
         char *input = strtok(NULL, " ");
 
-        if(strcmp(input, "-u") == 0)
+        if (strcmp(input, "-u") == 0)
         {
             input = strtok(NULL, " ");
             executa_u(input, fifo_escrita);
