@@ -13,8 +13,8 @@
 #include <stdbool.h>
 
 #define ERROR 255
-#define CLIENTE "Cliente"
-#define SERVIDOR "Servidor"
+#define FIFO "fifo"
+
 
 typedef struct executando
 {
