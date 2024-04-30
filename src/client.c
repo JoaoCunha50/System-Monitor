@@ -32,8 +32,6 @@ int main(int argc, char *argv[])
         {
             for (int i = 0; i < nr_comandos; i++)
             {
-                struct timeval tv_now;
-                gettimeofday(&tv_now, NULL);
                 char status[100];
                 if (strcmp(lista_comandos[i].status, "EXECUTED"))
                 {

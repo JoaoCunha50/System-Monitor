@@ -21,20 +21,14 @@ void executa_u(char *args, int fifo)
     lista_argumentos[num_args] = NULL;
     printf("Cheguei\n");
 
-    pid_t pid = 0;
     int fd[2];
     pipe(fd);
+    pid_t pid = fork();
 
-    if (fork() == -1)
-    {
-        write(2, "Erro ao criar processo-filho\n", 31);
-        close(fd[1]);
-        read(fd[0], &pid, sizeof(pid_t));
-        return 1;
-    }
-    else
+    if (pid == 0)
     {
         pid_t pid = getpid();
+        printf("Cheguei\n");
         close(fd[0]);
         write(fd[1], &pid, sizeof(pid_t));
         char pid_message[32];
@@ -61,6 +55,14 @@ void executa_u(char *args, int fifo)
             _exit(ERROR);
         }
     }
+    else if (pid == -1)
+    {
+        write(2, "Erro ao criar processo-filho\n", 31);
+        close(fd[1]);
+        read(fd[0], &pid, sizeof(pid_t));
+        return 1;
+    }
+
     struct timeval time2;
     gettimeofday(&time2, NULL);
     char message_to_fifo2[1024];
@@ -71,7 +73,6 @@ void executa_u(char *args, int fifo)
         free(lista_argumentos[i]);
     }
     free(lista_argumentos);
-    _exit(0);
 }
 
 int main(int argc, char *argv[])

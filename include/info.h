@@ -13,7 +13,7 @@
 #include <stdbool.h>
 
 #define ERROR 255
-#define FIFO "fifo"
+#define FIFO "../tmp/fifo"
 
 typedef struct comandos
 {
