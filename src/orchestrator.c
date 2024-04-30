@@ -3,23 +3,18 @@
 // executa com a flag -u
 void executa_u(char *args, int fifo)
 {
-    char *prog_name = strtok(args, " ");
-    char *arg_str = strtok(NULL, "");
-    char **lista_argumentos = malloc(sizeof(char *));
-    lista_argumentos[0] = prog_name;
-    int num_args = 1;
-
-    while (arg_str != NULL)
+    printf("%s\n", args);
+    char **lista_argumentos = NULL, *aux = strdup(args), *token = NULL;
+    int num_args = 0;
+    while ((token = strsep(&aux, " ")) != NULL)
     {
+        lista_argumentos = realloc(lista_argumentos, sizeof(char *) * (num_args + 1));
+        lista_argumentos[num_args] = strdup(token);
         num_args++;
-        lista_argumentos = realloc(lista_argumentos, sizeof(char *) * num_args);
-        lista_argumentos[num_args - 1] = strdup(arg_str);
-        arg_str = strtok(NULL, "");
     }
 
     lista_argumentos = realloc(lista_argumentos, sizeof(char *) * (num_args + 1));
     lista_argumentos[num_args] = NULL;
-    printf("Cheguei\n");
 
     int fd[2];
     pipe(fd);
@@ -28,7 +23,6 @@ void executa_u(char *args, int fifo)
     if (pid == 0)
     {
         pid_t pid = getpid();
-        printf("Cheguei\n");
         close(fd[0]);
         write(fd[1], &pid, sizeof(pid_t));
         char pid_message[32];
@@ -57,10 +51,10 @@ void executa_u(char *args, int fifo)
     }
     else if (pid == -1)
     {
-        write(2, "Erro ao criar processo-filho\n", 31);
+        write(2, "Erro ao criar processo-filho\n", 29);
         close(fd[1]);
         read(fd[0], &pid, sizeof(pid_t));
-        return 1;
+        return;
     }
 
     struct timeval time2;
@@ -105,7 +99,6 @@ int main(int argc, char *argv[])
     while (true)
     {
         int fifo_servidor = open(FIFO, O_RDONLY);
-        printf("cheguei\n");
         if (fifo_servidor < 0)
         {
             write(2, "Error opening reading fifo.\n", 29);
@@ -117,7 +110,11 @@ int main(int argc, char *argv[])
             return 1;
         }
         close(fifo_servidor);
-
+        if (strcmp(buffer, "exit") == 0)
+        {
+            printf("Terminando servidor...\n");
+            break;
+        }
         executa_u(buffer, fifo_servidor);
     }
     return 0;
