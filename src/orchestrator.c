@@ -3,7 +3,6 @@
 // executa com a flag -u
 void executa_u(char *args, int fifo)
 {
-    printf("%s\n", args);
     char **lista_argumentos = NULL, *aux = strdup(args), *token = NULL;
     int num_args = 0;
     while ((token = strsep(&aux, " ")) != NULL)
@@ -36,7 +35,7 @@ void executa_u(char *args, int fifo)
         struct timeval time;
         gettimeofday(&time, NULL);
         char message_to_fifo[1024];
-        sprintf(message_to_fifo, "EM EXECUÇÃO;PID: %d;%s;%ld;%ld", getpid(), lista_argumentos[0], time.tv_sec, time.tv_usec);
+        sprintf(message_to_fifo, "EM EXECUÇÃO;PID: %d;%s", getpid(), lista_argumentos[0]);
         write(fifo, message_to_fifo, 1024);
 
         if (execvp(lista_argumentos[0], lista_argumentos) < 0)
@@ -44,7 +43,7 @@ void executa_u(char *args, int fifo)
             write(1, "Entrada Inválida.\n", 20);
             gettimeofday(&time, NULL);
             char message_to_fifo2[1024];
-            sprintf(message_to_fifo2, "EXECUTADO;PID: %d;%s;%ld;%ld", getpid(), lista_argumentos[0], time.tv_sec, time.tv_usec);
+            sprintf(message_to_fifo2, "EXECUTADO;PID: %d;%s;%ld", getpid(), lista_argumentos[0], time.tv_usec);
             write(fifo, message_to_fifo2, 1024);
             _exit(ERROR);
         }
@@ -56,11 +55,17 @@ void executa_u(char *args, int fifo)
         read(fd[0], &pid, sizeof(pid_t));
         return;
     }
+    else
+    {
+        wait(NULL);
+        close(fd[1]);
+        read(fd[0], &pid, sizeof(pid_t));
+    }
 
     struct timeval time2;
     gettimeofday(&time2, NULL);
     char message_to_fifo2[1024];
-    sprintf(message_to_fifo2, "EXECUTADO;PID: %d;%s;%ld;%ld", getpid(), lista_argumentos[0], time2.tv_sec, time2.tv_usec);
+    sprintf(message_to_fifo2, "EXECUTADO;PID: %d;%s;%ld", getpid(), lista_argumentos[0], time2.tv_usec);
     write(fifo, message_to_fifo2, 1024);
     for (int i = 1; i < num_args; i++)
     {
@@ -90,11 +95,12 @@ int main(int argc, char *argv[])
     }
 
     char output[128];
-    snprintf(output, sizeof(output), "%s/Historico.log", argv[1]);
+    snprintf(output, sizeof(output), "%s/commands.log", argv[1]);
 
     printf("Servidor operacional ...\n");
 
     char buffer[1024];
+    int logs = open(output, O_WRONLY | O_CREAT | O_APPEND, 0666);
 
     while (true)
     {
@@ -117,5 +123,6 @@ int main(int argc, char *argv[])
         }
         executa_u(buffer, fifo_servidor);
     }
+    close(logs);
     return 0;
 }
