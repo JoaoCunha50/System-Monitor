@@ -50,7 +50,6 @@ int main(int argc, char *argv[])
     {
         if (strcmp(argv[3], "-u") == 0)
         {
-            printf("%s\n", argv[4]);
             write(fifo_servidor, argv[4], strlen(argv[4]) + 1);
         }
     }
