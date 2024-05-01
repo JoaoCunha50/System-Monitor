@@ -1,8 +1,8 @@
 #include "../include/info.h"
 
-int sizeofComands(Comandos *comands)
+int sizeofComands()
 {
-    int tamanho = sizeof(comands);
+    int tamanho = sizeof(Comandos);
     return tamanho;
 }
 
@@ -21,45 +21,42 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    Comandos *lista_comandos = malloc(sizeofComands(lista_comandos) * 15);
-    int tamanho_comandos = 15, nr_comandos = 0;
+    int sizeofcomands = sizeofComands();
+    Comandos *lista_comandos = malloc(sizeofcomands * 15);
+    /*int tamanho_comandos = 15*/
+    int nr_comandos = 0;
 
-    int flag = 0;
-
-    while (!flag)
+    if (strcmp(argv[1], "status") == 0)
     {
-        if (strcmp(argv[1], "status") == 0)
+        for (int i = 0; i < nr_comandos; i++)
         {
-            for (int i = 0; i < nr_comandos; i++)
+            char status[100];
+            if (strcmp(lista_comandos[i].status, "EXECUTED"))
             {
-                char status[100];
-                if (strcmp(lista_comandos[i].status, "EXECUTED"))
-                {
-                    sprintf(status, "PID: %d; Programa: %s; Tempo de Execução: %lld ms\n", lista_comandos[i].pid, lista_comandos[i].prog_name, lista_comandos[i].exec_time);
-                }
-                else if (strcmp(lista_comandos[i].status, "EXECUTING"))
-                {
-                    sprintf(status, "PID: %d; Programa: %s;\n", lista_comandos[i].pid, lista_comandos[i].prog_name);
-                }
-                else if (strcmp(lista_comandos[i].status, "QUEUED"))
-                {
-                    sprintf(status, "PID: %d; Programa: %s; Tempo Estimado: %d;\n", lista_comandos[i].pid, lista_comandos[i].prog_name, lista_comandos[i].estimated_time);
-                }
-                write(fifo_servidor, status, sizeof(status));
+                sprintf(status, "PID: %d; Programa: %s; Tempo de Execução: %f ms\n", lista_comandos[i].pid, lista_comandos[i].prog_name, lista_comandos[i].exec_time);
             }
-        }
-        else if (strcmp(argv[1], "execute") == 0)
-        {
-            if (strcmp(argv[3], "-u") == 0)
+            else if (strcmp(lista_comandos[i].status, "EXECUTING"))
             {
-                write(fifo_servidor, argv[4], strlen(argv));
+                sprintf(status, "PID: %d; Programa: %s;\n", lista_comandos[i].pid, lista_comandos[i].prog_name);
             }
+            else if (strcmp(lista_comandos[i].status, "QUEUED"))
+            {
+                sprintf(status, "PID: %d; Programa: %s; Tempo Estimado: %f;\n", lista_comandos[i].pid, lista_comandos[i].prog_name, lista_comandos[i].estimated_time);
+            }
+            write(fifo_servidor, status, sizeof(status));
         }
-        else if (strcmp(argv[1], "exit") == 0)
+    }
+    else if (strcmp(argv[1], "execute") == 0)
+    {
+        if (strcmp(argv[3], "-u") == 0)
         {
-            flag = 1;
-            break;
+            printf("%s\n", argv[4]);
+            write(fifo_servidor, argv[4], strlen(argv[4]) + 1);
         }
+    }
+    else if (strcmp(argv[1], "exit") == 0)
+    {
+        write(fifo_servidor, argv[1], strlen(argv[1]) + 1);
     }
     free(lista_comandos);
 
