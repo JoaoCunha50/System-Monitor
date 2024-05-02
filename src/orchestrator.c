@@ -1,10 +1,14 @@
 #include "../include/info.h"
 
 // executa com a flag -u
-void executa_u(char *args, int fifo)
+void executa_u(char *args, int fifo, Comandos *lista_comandos, int *size)
 {
     char **lista_argumentos = NULL, *aux = strdup(args), *token = NULL;
-    int num_args = 0;
+    int num_args = 0, tempo;
+    token = strsep(&aux, ";");
+    tempo = atoi(token);
+    char *aux1 = strdup(aux);
+
     while ((token = strsep(&aux, " ")) != NULL)
     {
         lista_argumentos = realloc(lista_argumentos, sizeof(char *) * (num_args + 1));
@@ -29,7 +33,7 @@ void executa_u(char *args, int fifo)
         write(1, pid_message, strlen(pid_message));
 
         char exec[1024];
-        sprintf(exec, "EM EXECUÇÃO \"%s\"\n", args);
+        sprintf(exec, "EM EXECUÇÃO \"%s\"\n", aux1);
         write(1, exec, strlen(exec));
 
         struct timeval time;
@@ -74,8 +78,12 @@ void executa_u(char *args, int fifo)
     free(lista_argumentos);
 }
 
+
 int main(int argc, char *argv[])
 {
+    int sizeofcomands = sizeof(Comandos);
+    int size = 0;
+    Comandos *lista_comandos = malloc(sizeofcomands * 15);
 
     /*if (mkfifo(FIFO, 0666) < 0)
     {
@@ -129,7 +137,8 @@ int main(int argc, char *argv[])
             printf("Terminando servidor...\n");
             break;
         }
-        executa_u(buffer, fifo_servidor);
+
+        executa_u(buffer, fifo_servidor, lista_comandos, &size);
     }
     close(logs);
     return 0;
