@@ -1,3 +1,7 @@
+#ifndef ORCHESTRATOR_H
+#define ORCHESTRATOR_H
+
+#include "../src/commands.c"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -13,13 +17,7 @@
 #include <stdbool.h>
 
 #define ERROR 255
-#define FIFO "../tmp/fifo"
+#define SERVIDOR "../tmp/servidor"
+#define CLIENTE "../tmp/cliente"
 
-typedef struct comandos
-{
-    int pid;
-    char *prog_name;
-    char *status; // @enum QUEUED; EXECUTED; EXECUTING
-    float exec_time;
-    float estimated_time;
-} Comandos;
+#endif

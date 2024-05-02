@@ -1,26 +1,4 @@
-#include "../include/info.h"
-
-void setListaComandosPid(Comandos* lista_comandos, int i, int pid) {
-    lista_comandos[i].pid = pid;
-}
-
-void setListaComandosProgName(Comandos* lista_comandos, int i, char* prog_name) {
-    lista_comandos[i].prog_name = malloc(strlen(prog_name) + 1);
-    strcpy(lista_comandos[i].prog_name, prog_name);
-}
-
-void setListaComandosStatus(Comandos* lista_comandos, int i, char* status) {
-    lista_comandos[i].status = malloc(strlen(status) + 1);
-    strcpy(lista_comandos[i].status, status);
-}
-
-void setListaComandosExec_time(Comandos* lista_comandos, int i, long int exec_time) {
-    lista_comandos[i].exec_time = (float) exec_time;
-}
-
-void setListaComandosEstimated_time(Comandos* lista_comandos, int i, int estimated_time) {
-    lista_comandos[i].estimated_time = (float) estimated_time;
-}
+#include "../include/commands.h"
 
 int sizeofComands()
 {
@@ -32,4 +10,19 @@ int compareCommands(const void *a, const void *b)
 {
     int compare = ((Comandos *)b)->estimated_time - ((Comandos *)a)->estimated_time;
     return compare;
+}
+
+int atualizaStatus(Comandos comando, int logs)
+{
+    char status[1024];
+    snprintf(status, sizeof(status), "PID: %d;Status: %s;Time: %f ;Prog: %s\n", comando.pid, comando.status, comando.exec_time, comando.prog_name);
+
+    ssize_t bytes_escritos = write(logs, status, strlen(status));
+    if (bytes_escritos <= 0)
+    {
+        write(2, "Erro ao escrever no FIFO\n", 25);
+        exit(EXIT_FAILURE);
+    }
+
+    return 0;
 }
