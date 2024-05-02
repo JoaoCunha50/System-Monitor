@@ -50,7 +50,9 @@ int main(int argc, char *argv[])
     {
         if (strcmp(argv[3], "-u") == 0)
         {
-            write(fifo_servidor, argv[4], strlen(argv[4]) + 1);
+            char* aux = malloc(strlen(argv[2]) + strlen(argv[4]) + 2);
+            sprintf(aux, "%s;%s", argv[2], argv[4]);
+            write(fifo_servidor, aux, strlen(aux) + 1);
         }
     }
     else if (strcmp(argv[1], "exit") == 0)
