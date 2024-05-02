@@ -1,65 +1,84 @@
-#include "../include/info.h"
-
-int sizeofComands()
-{
-    int tamanho = sizeof(Comandos);
-    return tamanho;
-}
-
-int compareCommands(const void *a, const void *b)
-{
-    int compare = ((Comandos *)b)->pid - ((Comandos *)a)->pid;
-    return compare;
-}
+#include "../include/client.h"
 
 int main(int argc, char *argv[])
 {
-    int fifo_servidor = open(FIFO, O_WRONLY);
+    Comandos comando;
+    strcpy(comando.command, argv[1]); // para ir buscar o comando para execução
+
+    int fifo_servidor = open(SERVIDOR, O_WRONLY);
     if (fifo_servidor < 0)
     {
         write(2, "Error opening reading fifo.\n", 29);
         exit(EXIT_FAILURE);
     }
 
-    int sizeofcomands = sizeofComands();
-    Comandos *lista_comandos = malloc(sizeofcomands * 15);
-    /*int tamanho_comandos = 15*/
-    int nr_comandos = 0;
+    if (argc < 2)
+    {
+        write(2, "Invalid number of arguments.\n", 30);
+        exit(EXIT_FAILURE);
+    }
+
+    char buffer[1024];
 
     if (strcmp(argv[1], "status") == 0)
     {
-        for (int i = 0; i < nr_comandos; i++)
+        write(fifo_servidor, &comando, sizeof(Comandos));
+
+        int fifo_cliente = open(CLIENTE, O_RDONLY);
+        if (read(fifo_cliente, buffer, sizeof(buffer)) <= 0)
         {
-            char status[100];
-            if (strcmp(lista_comandos[i].status, "EXECUTED"))
-            {
-                sprintf(status, "PID: %d; Programa: %s; Tempo de Execução: %f ms\n", lista_comandos[i].pid, lista_comandos[i].prog_name, lista_comandos[i].exec_time);
-            }
-            else if (strcmp(lista_comandos[i].status, "EXECUTING"))
-            {
-                sprintf(status, "PID: %d; Programa: %s;\n", lista_comandos[i].pid, lista_comandos[i].prog_name);
-            }
-            else if (strcmp(lista_comandos[i].status, "QUEUED"))
-            {
-                sprintf(status, "PID: %d; Programa: %s; Tempo Estimado: %f;\n", lista_comandos[i].pid, lista_comandos[i].prog_name, lista_comandos[i].estimated_time);
-            }
-            write(fifo_servidor, status, sizeof(status));
+            perror("Erro ao ler do fifo\n");
+            exit(EXIT_FAILURE);
         }
+        close(fifo_cliente);
+
+        int logs = open(buffer, O_RDONLY | O_CREAT | O_APPEND, 0666);
+
+        char logs_read[4096];
+        ssize_t bytes_lidos = read(logs, logs_read, sizeof(logs_read));
+        if (bytes_lidos <= 0)
+        {
+            perror("Erro ao ler do fifo\n");
+            exit(EXIT_FAILURE);
+        }
+        logs_read[bytes_lidos] = '\0';
+
+        ssize_t bytes_escritos = write(STDOUT_FILENO, logs_read, strlen(logs_read));
+        {
+            if (bytes_escritos <= 0)
+            {
+                perror("Erro ao escrever no STDOUT\n");
+                exit(EXIT_FAILURE);
+            }
+        }
+        close(logs);
     }
     else if (strcmp(argv[1], "execute") == 0)
     {
-        if (strcmp(argv[3], "-u") == 0)
+        comando.estimated_time = atoi(argv[2]);
+        strcpy(comando.prog_name, argv[4]);
+        strcpy(comando.flag, argv[3]);
+
+        if (strcmp(argv[3], "-u") == 0 || strcmp(argv[3], "-p") == 0)
         {
-            char* aux = malloc(strlen(argv[2]) + strlen(argv[4]) + 2);
-            sprintf(aux, "%s;%s", argv[2], argv[4]);
-            write(fifo_servidor, aux, strlen(aux) + 1);
+            ssize_t bytes_escritos = write(fifo_servidor, &comando, sizeof(Comandos));
+            if (bytes_escritos <= 0)
+            {
+                write(2, "Erro ao escrever no FIFO\n", 25);
+                exit(EXIT_FAILURE);
+            }
         }
     }
     else if (strcmp(argv[1], "exit") == 0)
     {
-        write(fifo_servidor, argv[1], strlen(argv[1]) + 1);
+        int bytes_escritos = write(fifo_servidor, &comando, sizeof(Comandos));
+        if (bytes_escritos <= 0)
+        {
+            write(2, "Erro ao escrever no FIFO\n", 25);
+            exit(EXIT_FAILURE);
+        }
     }
-    free(lista_comandos);
 
+    close(fifo_servidor);
     return 0;
 }
