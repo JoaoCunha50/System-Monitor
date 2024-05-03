@@ -1,5 +1,116 @@
 #include "../include/orchestrator.h"
 
+int task_id = 1;
+
+int next_task_id()
+{
+    return task_id++;
+}
+
+void start_queue(Comandos *queue)
+{
+    queue = malloc(TAMANHO_LISTA * sizeof(Comandos));
+    for (int i = 0; i < TAMANHO_LISTA; i++)
+    {
+        strcpy(queue[i].status, "QUEUE");
+        queue[i].exec_time = 0;
+    }
+}
+
+bool is_queue_empty(Comandos *queue)
+{
+    for (int i = 0; i < TAMANHO_LISTA; i++)
+    {
+        if (strcmp(queue[i].prog_name, "") == 0)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+int compareComandosTime(Comandos novo, Comandos queued)
+{
+    if (novo.estimated_time < queued.estimated_time)
+        return 1; // Retorna 1 se o tempo estimado do novo for menor que o tempo estimado da primeira tarefa na fila
+    else
+        return 0; // Retorna 0 caso contrário
+}
+Comandos *shiftRight(Comandos *queue)
+{
+    for (int i = 0; i < TAMANHO_LISTA - 1; i++)
+    {
+        queue[i] = queue[i + 1];
+    }
+    return queue;
+}
+
+int get_correct_index(Comandos *queue, Comandos novo)
+{
+    int index = 0;
+    for (index; index < TAMANHO_LISTA && strcmp(queue[index].prog_name, "") == 0 && !(compareComandosTime(novo, queue[index])); index++)
+        ;
+    return index;
+}
+
+Comandos *addTask(Comandos *queue, Comandos novo, int index)
+{
+    for (int i = TAMANHO_LISTA - 1; i > index; i--)
+    {
+        queue[i] = queue[i - 1];
+    }
+    queue[index] = novo;
+
+    return queue;
+}
+
+void add_task_toQueue(Comandos *queue, Comandos novo)
+{
+    if (is_queue_empty(queue) || compareComandosTime(novo, queue[0])) // adicionamos à 1ª posição, caso esteja vazia ou o seu tempo seja menor
+    {
+        queue = shiftRight(queue); // saltamos uma posição para dar espaço para a primeira posição
+        queue[0] = novo;
+    }
+    else // caso nao esteja na primeira posição, encontramos o indice correto para adicionar à queue
+    {
+        int index_novo = get_correct_index(queue, novo);
+        queue = addTask(queue, novo, index_novo);
+    }
+}
+
+Comandos *move_elements_back(Comandos *queue, int start_index)
+{
+    for (int j = start_index; j < TAMANHO_LISTA - 1; j++)
+    {
+        queue[j] = queue[j + 1];
+    }
+    queue[TAMANHO_LISTA - 1].prog_name[0] = '\0';
+
+    return queue;
+}
+
+void remove_task_fromQueue(Comandos *queue, Comandos remove)
+{
+    for (int i = 0; i < TAMANHO_LISTA; i++)
+    {
+        if (queue[i].command != NULL && queue[i].id == remove.id)
+        {
+            queue = move_elements_back(queue, i);
+            break;
+        }
+    }
+}
+
+Comandos queueGetNextTask(Comandos *queue)
+{
+    return queue[0];
+}
+
+void deleteQueue(Comandos *queue)
+{
+    free(queue);
+}
+
 // executa com a flag -u
 void executa_u(char *args, int fifo, Comandos comandoFifo, int logs)
 {
@@ -80,6 +191,9 @@ void executa_u(char *args, int fifo, Comandos comandoFifo, int logs)
 
 int main(int argc, char *argv[])
 {
+    Comandos *queue;
+    Comandos *executed;
+    Comandos *executing;
 
     if (mkfifo(SERVIDOR, 0666) < 0)
     {
