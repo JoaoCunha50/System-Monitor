@@ -8,8 +8,11 @@
 #include <stdbool.h>
 #include <unistd.h>
 
+#define TAMANHO_LISTA 150
+
 typedef struct comandos
 {
+    int id;
     int pid;
     char command[20];
     char flag[10];
