@@ -78,6 +78,18 @@ void executa_u(char *args, int fifo, Comandos comandoFifo, int logs)
     free(lista_argumentos);
 }
 
+void executa_p(char *args, int fifo, Comandos comandoFifo, int logs)
+{
+    char *prog;
+    char *token = strdup(args);
+
+    do {
+        prog = strtok(token, "|");
+        token = strtok(NULL, "");
+        executa_u(prog, fifo, comandoFifo, logs);
+    } while(token != NULL);
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -153,7 +165,11 @@ int main(int argc, char *argv[])
             }
             else if (strcmp(comandoFifo.command, "execute") == 0)
             {
-                executa_u(comandoFifo.prog_name, fifo_servidor, comandoFifo, logs);
+                if (strcmp(comandoFifo.flag, "-u") == 0) {
+                    executa_u(comandoFifo.prog_name, fifo_servidor, comandoFifo, logs);
+                } else if (strcmp(comandoFifo.flag, "-p") == 0) {
+                    executa_p(comandoFifo.prog_name, fifo_servidor, comandoFifo, logs);
+                }
                 close(fifo_servidor);
             }
 
