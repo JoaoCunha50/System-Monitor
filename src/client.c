@@ -25,17 +25,9 @@ int main(int argc, char *argv[])
         write(fifo_servidor, &comando, sizeof(Comandos));
 
         int fifo_cliente = open(CLIENTE, O_RDONLY);
-        if (read(fifo_cliente, buffer, sizeof(buffer)) <= 0)
-        {
-            perror("Erro ao ler do fifo\n");
-            exit(EXIT_FAILURE);
-        }
-        close(fifo_cliente);
-
-        int logs = open(buffer, O_RDONLY | O_CREAT | O_APPEND, 0666);
 
         char logs_read[4096];
-        ssize_t bytes_lidos = read(logs, logs_read, sizeof(logs_read));
+        ssize_t bytes_lidos = read(fifo_cliente, logs_read, sizeof(logs_read));
         if (bytes_lidos <= 0)
         {
             perror("Erro ao ler do fifo\n");
@@ -51,7 +43,7 @@ int main(int argc, char *argv[])
                 exit(EXIT_FAILURE);
             }
         }
-        close(logs);
+        close(fifo_cliente);
     }
     else if (strcmp(argv[1], "execute") == 0)
     {
@@ -77,6 +69,7 @@ int main(int argc, char *argv[])
             write(2, "Erro ao escrever no FIFO\n", 25);
             exit(EXIT_FAILURE);
         }
+        write(1,"Server Terminado...\n", 20);
     }
 
     close(fifo_servidor);

@@ -38,7 +38,11 @@ void executa_u(char *args, int fifo, Comandos comandoFifo, int logs)
 
         char exec[1024];
         sprintf(exec, "EXECUTING \"%s\"\n", prog_name);
-        strcpy(comandoFifo.status, "EXECUTING;");
+        write(1, &exec, strlen(exec));
+        strcpy(comandoFifo.status, "EXECUTING");
+
+        dup2(logs, STDOUT_FILENO);
+        dup2(logs, STDERR_FILENO);
 
         if (execvp(lista_argumentos[0], lista_argumentos) < 0)
         {
@@ -62,7 +66,7 @@ void executa_u(char *args, int fifo, Comandos comandoFifo, int logs)
     gettimeofday(&end, NULL);
     long time_exec = (end.tv_sec - start.tv_sec) * 1000 + (end.tv_usec - start.tv_usec) / 1000;
 
-    strcpy(comandoFifo.status, "EXECUTED;");
+    strcpy(comandoFifo.status, "EXECUTED");
     comandoFifo.exec_time = (float)time_exec;
 
     atualizaStatus(comandoFifo, logs);
@@ -126,6 +130,7 @@ int main(int argc, char *argv[])
         perror("Error writing in logs file");
         exit(EXIT_FAILURE); // return caso aconteça algo, i.e caso nao consiga escrever nada no ficheiro das logs
     }
+    close(logs);
 
     int flag = 1;
 
@@ -133,6 +138,7 @@ int main(int argc, char *argv[])
     {
         Comandos comandoFifo;
         int fifo_servidor = open(SERVIDOR, O_RDONLY);
+        logs = open(output_log_path, O_WRONLY | O_CREAT | O_APPEND, 0666);
         if (fifo_servidor < 0)
         {
             write(2, "Error opening reading fifo.\n", 29);
@@ -153,8 +159,18 @@ int main(int argc, char *argv[])
 
             else if (strcmp(comandoFifo.command, "status") == 0)
             {
+                close(logs);
+                logs = open(output_log_path, O_RDONLY | O_CREAT | O_APPEND, 0666);
+                char logs_output[4096];
+                if (read(logs, logs_output, sizeof(logs_output)) <= 0)
+                {
+                    perror("Erro ao ler do FIFO\n");
+                    exit(EXIT_FAILURE);
+                }
+                close(logs);
+
                 int fifo_cliente = open(CLIENTE, O_WRONLY);
-                ssize_t bytes_escritos = write(fifo_cliente, output_log_path, strlen(output_log_path));
+                ssize_t bytes_escritos = write(fifo_cliente, logs_output, strlen(logs_output));
                 if (bytes_escritos <= 0)
                 {
                     perror("Erro ao escrever no Fifo\n");
