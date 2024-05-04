@@ -38,20 +38,20 @@ int atualizaStatus(int fifo_cliente, Comandos *received, Comandos *queue)
     {
         if ((!is_command_empty(received[i])) && strcmp(received[i].status, "EXECUTING") == 0)
         {
-            snprintf(status + strlen(status), sizeof(status) - strlen(status), "ID: %d Prog: %s\n", received[i].id, received[i].prog_name);
+            snprintf(status + strlen(status), sizeof(status), "ID: %d Prog: %s\n", received[i].id, received[i].prog_name);
         }
     }
 
-    snprintf(status + strlen(status), sizeof(status) - strlen(status), "\nScheduled\n\n");
+    snprintf(status + strlen(status), sizeof(status), "\nScheduled\n\n");
     for (int i = 0; i < TAMANHO_LISTA; i++)
     {
         if ((!is_command_empty(queue[i])) && strcmp(queue[i].status, "QUEUED") == 0)
         {
-            snprintf(status + strlen(status), sizeof(status) - strlen(status), "ID: %d Prog: %s\n", queue[i].id, queue[i].prog_name);
+            snprintf(status + strlen(status), sizeof(status), "ID: %d Prog: %s\n", queue[i].id, queue[i].prog_name);
         }
     }
 
-    snprintf(status + strlen(status), sizeof(status) - strlen(status), "\nCompleted\n\n");
+    snprintf(status + strlen(status), sizeof(status), "\nCompleted\n\n");
     for (int i = 0; i < TAMANHO_LISTA; i++)
     {
         if ((!is_command_empty(received[i])) && strcmp(received[i].status, "EXECUTED") == 0)
