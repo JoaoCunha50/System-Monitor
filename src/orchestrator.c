@@ -55,7 +55,7 @@ Comandos executa_u(int fifo, Comandos *received, Comandos comando_exec, int logs
     else if (pid == -1)
     {
         write(2, "Erro ao criar processo-filho\n", 29);
-        return;
+        exit(EXIT_FAILURE);
     }
 
     waitpid(pid, &status, 0);
@@ -155,49 +155,69 @@ int main(int argc, char *argv[])
         }
         while ((read(fifo_servidor, &comando_lido, sizeof(Comandos)) > 0))
         {
-            if (strcmp(comando_lido.command, "status") == 0)
-            {
-                int fifo_cliente = open(CLIENTE, O_WRONLY);
-                atualizaStatus(fifo_cliente, received, queue);
-                close(fifo_servidor);
-            }
-
             if (strcmp(comando_lido.command, "exit") == 0)
             {
-                printf("Terminando servidor...\n");
+                write(1, "Terminando servidor...\n", 24);
                 flag = 0;
                 close(fifo_servidor);
                 break;
             }
+            if (strcmp(comando_lido.status, "EXECUTED") == 0)
+            {
+                remove_task_fromQueue(received, comando_lido); // remove o comando com o status EXECUTING
+                add_task_toQueue(received, comando_lido);      // adiciona o comando com o status EXECUTED
+                nr_comandos--;
+                printf("%d\n", nr_comandos);
+                continue;
+            }
+            if (strcmp(comando_lido.command, "status") == 0)
+            {
+                int fifo_cliente = open(CLIENTE, O_WRONLY);
+                atualizaStatus(fifo_cliente, received, queue);
+                close(fifo_cliente);
+                continue;
+            }
+
             if (strcmp(comando_lido.command, "execute") == 0)
             {
-                int r = 0;
-                nr_comandos++;
-
-                comando_lido.id = next_task_id();
                 int fifo_cliente = open(CLIENTE, O_WRONLY);
-                write(fifo_cliente, &comando_lido.id, sizeof(int));
+                comando_lido.id = next_task_id();
+                int id = comando_lido.id;
+                write(fifo_cliente, &id, sizeof(int));
+                close(fifo_cliente);
 
                 strcpy(comando_exec.status, "QUEUED");
                 add_task_toQueue(queue, comando_lido);
+                nr_comandos++;
 
-                if (nr_comandos < tasks_parallel)
+                if (nr_comandos <= tasks_parallel && !is_queue_empty(queue))
                 {
                     comando_exec = queueGetNextTask(queue);
-                    remove_task_fromQueue(queue, comando_lido);
+                    remove_task_fromQueue(queue, comando_exec);
 
                     strcpy(comando_exec.status, "EXECUTING");
                     add_task_toQueue(received, comando_exec);
 
-                    comando_exec = executa_u(fifo_servidor, received, comando_exec, logs);
+                    pid_t pid = fork();
+                    if (pid == 0)
+                    {
+                        comando_exec = executa_u(fifo_servidor, received, comando_exec, logs);
+                        strcpy(comando_exec.status, "EXECUTED");
 
-                    strcpy(comando_exec.status, "EXECUTED");
-                    add_task_toQueue(received, comando_exec);
+                        close(fifo_servidor);
+                        fifo_servidor = open(SERVIDOR, O_WRONLY);
+                        write(fifo_servidor, &comando_exec, sizeof(Comandos));
+                        close(fifo_servidor);
+
+                        exit(EXIT_SUCCESS);
+                    }
+                    else if (pid == -1)
+                    {
+                        perror("Erro ao criar processo-filho");
+                        close(fifo_servidor);
+                        exit(EXIT_FAILURE);
+                    }
                 }
-                if (strcmp(comando_exec.prog_name, "") != 0)
-                    nr_comandos--;
-
-                close(fifo_servidor);
             }
         }
     }
