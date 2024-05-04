@@ -1,119 +1,9 @@
 #include "../include/orchestrator.h"
 
-int task_id = 1;
-
-int next_task_id()
-{
-    return task_id++;
-}
-
-void start_queue(Comandos *queue)
-{
-    queue = malloc(TAMANHO_LISTA * sizeof(Comandos));
-    for (int i = 0; i < TAMANHO_LISTA; i++)
-    {
-        strcpy(queue[i].status, "QUEUE");
-        queue[i].exec_time = 0;
-    }
-}
-
-bool is_queue_empty(Comandos *queue)
-{
-    for (int i = 0; i < TAMANHO_LISTA; i++)
-    {
-        if (strcmp(queue[i].prog_name, "") == 0)
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
-int compareComandosTime(Comandos novo, Comandos queued)
-{
-    if (novo.estimated_time < queued.estimated_time)
-        return 1; // Retorna 1 se o tempo estimado do novo for menor que o tempo estimado da primeira tarefa na fila
-    else
-        return 0; // Retorna 0 caso contrário
-}
-Comandos *shiftRight(Comandos *queue)
-{
-    for (int i = 0; i < TAMANHO_LISTA - 1; i++)
-    {
-        queue[i] = queue[i + 1];
-    }
-    return queue;
-}
-
-int get_correct_index(Comandos *queue, Comandos novo)
-{
-    int index = 0;
-    for (index; index < TAMANHO_LISTA && strcmp(queue[index].prog_name, "") == 0 && !(compareComandosTime(novo, queue[index])); index++)
-        ;
-    return index;
-}
-
-Comandos *addTask(Comandos *queue, Comandos novo, int index)
-{
-    for (int i = TAMANHO_LISTA - 1; i > index; i--)
-    {
-        queue[i] = queue[i - 1];
-    }
-    queue[index] = novo;
-
-    return queue;
-}
-
-void add_task_toQueue(Comandos *queue, Comandos novo)
-{
-    if (is_queue_empty(queue) || compareComandosTime(novo, queue[0])) // adicionamos à 1ª posição, caso esteja vazia ou o seu tempo seja menor
-    {
-        queue = shiftRight(queue); // saltamos uma posição para dar espaço para a primeira posição
-        queue[0] = novo;
-    }
-    else // caso nao esteja na primeira posição, encontramos o indice correto para adicionar à queue
-    {
-        int index_novo = get_correct_index(queue, novo);
-        queue = addTask(queue, novo, index_novo);
-    }
-}
-
-Comandos *move_elements_back(Comandos *queue, int start_index)
-{
-    for (int j = start_index; j < TAMANHO_LISTA - 1; j++)
-    {
-        queue[j] = queue[j + 1];
-    }
-    queue[TAMANHO_LISTA - 1].prog_name[0] = '\0';
-
-    return queue;
-}
-
-void remove_task_fromQueue(Comandos *queue, Comandos remove)
-{
-    for (int i = 0; i < TAMANHO_LISTA; i++)
-    {
-        if (queue[i].command != NULL && queue[i].id == remove.id)
-        {
-            queue = move_elements_back(queue, i);
-            break;
-        }
-    }
-}
-
-Comandos queueGetNextTask(Comandos *queue)
-{
-    return queue[0];
-}
-
-void deleteQueue(Comandos *queue)
-{
-    free(queue);
-}
-
 // executa com a flag -u
-void executa_u(char *args, int fifo, Comandos comandoFifo, int logs)
+Comandos executa_u(int fifo, Comandos *received, Comandos comando_exec, int logs)
 {
+    char *args = strdup(comando_exec.prog_name);
     char *prog_name = strtok(args, " ");
     char *arg_str = strtok(NULL, "");
     char **lista_argumentos = malloc(sizeof(char *));
@@ -150,7 +40,7 @@ void executa_u(char *args, int fifo, Comandos comandoFifo, int logs)
         char exec[1024];
         sprintf(exec, "EXECUTING \"%s\"\n", prog_name);
         write(1, &exec, strlen(exec));
-        strcpy(comandoFifo.status, "EXECUTING");
+        strcpy(comando_exec.status, "EXECUTING");
 
         dup2(logs, STDOUT_FILENO);
         dup2(logs, STDERR_FILENO);
@@ -172,28 +62,30 @@ void executa_u(char *args, int fifo, Comandos comandoFifo, int logs)
     pid_t pid_comando = 0;
     close(fd[1]);
     read(fd[0], &pid_comando, sizeof(pid_comando));
-    comandoFifo.pid = pid_comando;
+    comando_exec.pid = pid_comando;
 
     gettimeofday(&end, NULL);
     long time_exec = (end.tv_sec - start.tv_sec) * 1000 + (end.tv_usec - start.tv_usec) / 1000;
+    remove_task_fromQueue(received, comando_exec);
 
-    strcpy(comandoFifo.status, "EXECUTED");
-    comandoFifo.exec_time = (float)time_exec;
+    strcpy(comando_exec.status, "EXECUTED");
+    comando_exec.exec_time = (float)time_exec;
 
-    atualizaStatus(comandoFifo, logs);
+    atualizaLogs(comando_exec, logs);
 
     for (int i = 1; i < num_args; i++)
     {
         free(lista_argumentos[i]);
     }
     free(lista_argumentos);
+
+    return comando_exec;
 }
 
 int main(int argc, char *argv[])
 {
-    Comandos *queue;
-    Comandos *executed;
-    Comandos *executing;
+    Comandos *queue = malloc(sizeof(Comandos));
+    Comandos *received = malloc(sizeof(Comandos));
 
     if (mkfifo(SERVIDOR, 0666) < 0)
     {
@@ -244,60 +136,68 @@ int main(int argc, char *argv[])
         perror("Error writing in logs file");
         exit(EXIT_FAILURE); // return caso aconteça algo, i.e caso nao consiga escrever nada no ficheiro das logs
     }
-    close(logs);
 
     int flag = 1;
+    int nr_comandos = 0;
+
+    start_queue(queue);
+    start_queue(received);
 
     while (flag)
     {
-        Comandos comandoFifo;
+        Comandos comando_lido;
+        Comandos comando_exec;
         int fifo_servidor = open(SERVIDOR, O_RDONLY);
-        logs = open(output_log_path, O_WRONLY | O_CREAT | O_APPEND, 0666);
         if (fifo_servidor < 0)
         {
             write(2, "Error opening reading fifo.\n", 29);
             return 1;
         }
-        while ((read(fifo_servidor, &comandoFifo, sizeof(Comandos)) > 0))
+        while ((read(fifo_servidor, &comando_lido, sizeof(Comandos)) > 0))
         {
-            if (strcmp(comandoFifo.status, "EXECUTED") == 0)
+            if (strcmp(comando_lido.command, "status") == 0)
             {
-                // acabou a tarefa
-                continue;
-            }
-            else if (strcmp(comandoFifo.command, "execute") == 0)
-            {
-                executa_u(comandoFifo.prog_name, fifo_servidor, comandoFifo, logs);
-                close(fifo_servidor);
-            }
-
-            else if (strcmp(comandoFifo.command, "status") == 0)
-            {
-                close(logs);
-                logs = open(output_log_path, O_RDONLY | O_CREAT | O_APPEND, 0666);
-                char logs_output[4096];
-                if (read(logs, logs_output, sizeof(logs_output)) <= 0)
-                {
-                    perror("Erro ao ler do FIFO\n");
-                    exit(EXIT_FAILURE);
-                }
-                close(logs);
-
                 int fifo_cliente = open(CLIENTE, O_WRONLY);
-                ssize_t bytes_escritos = write(fifo_cliente, logs_output, strlen(logs_output));
-                if (bytes_escritos <= 0)
-                {
-                    perror("Erro ao escrever no Fifo\n");
-                }
+                atualizaStatus(fifo_cliente, received, queue);
                 close(fifo_servidor);
             }
 
-            else if (strcmp(comandoFifo.command, "exit") == 0)
+            if (strcmp(comando_lido.command, "exit") == 0)
             {
                 printf("Terminando servidor...\n");
                 flag = 0;
                 close(fifo_servidor);
                 break;
+            }
+            if (strcmp(comando_lido.command, "execute") == 0)
+            {
+                int r = 0;
+                nr_comandos++;
+
+                comando_lido.id = next_task_id();
+                int fifo_cliente = open(CLIENTE, O_WRONLY);
+                write(fifo_cliente, &comando_lido.id, sizeof(int));
+
+                strcpy(comando_exec.status, "QUEUED");
+                add_task_toQueue(queue, comando_lido);
+
+                if (nr_comandos < tasks_parallel)
+                {
+                    comando_exec = queueGetNextTask(queue);
+                    remove_task_fromQueue(queue, comando_lido);
+
+                    strcpy(comando_exec.status, "EXECUTING");
+                    add_task_toQueue(received, comando_exec);
+
+                    comando_exec = executa_u(fifo_servidor, received, comando_exec, logs);
+
+                    strcpy(comando_exec.status, "EXECUTED");
+                    add_task_toQueue(received, comando_exec);
+                }
+                if (strcmp(comando_exec.prog_name, "") != 0)
+                    nr_comandos--;
+
+                close(fifo_servidor);
             }
         }
     }

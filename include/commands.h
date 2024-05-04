@@ -24,6 +24,7 @@ typedef struct comandos
 
 int sizeofComands();
 int compareCommands(const void *a, const void *b);
-int atualizaStatus(Comandos comando, int logs);
+int atualizaLogs(Comandos comando, int logs);
+int atualizaStatus(int fifo_cliente, Comandos *received, Comandos *queue);
 
 #endif
