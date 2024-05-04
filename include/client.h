@@ -1,7 +1,7 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-#include "../src/commands.c"
+#include "commands.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>

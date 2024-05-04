@@ -1,7 +1,8 @@
 #ifndef ORCHESTRATOR_H
 #define ORCHESTRATOR_H
 
-#include "../src/commands.c"
+#include "commands.h"
+#include "queue.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
