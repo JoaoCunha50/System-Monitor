@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
         close(fifo_cliente);
 
     }
-    else if (strcmp(argv[1], "exit") == 0)
+    else if (strcmp(argv[1], "shutdown") == 0)
     {
         int bytes_escritos = write(fifo_servidor, &comando, sizeof(Comandos));
         if (bytes_escritos <= 0)

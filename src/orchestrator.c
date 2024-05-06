@@ -84,8 +84,10 @@ Comandos executa_u(int fifo, Comandos *received, Comandos comando_exec, int logs
 
 int main(int argc, char *argv[])
 {
-    Comandos *queue = malloc(sizeof(Comandos));
-    Comandos *received = malloc(sizeof(Comandos));
+    Comandos *queue = calloc(0, sizeof(Comandos));
+    start_queue(queue);
+    Comandos *received = calloc(0, sizeof(Comandos));
+    start_queue(received);
 
     if (mkfifo(SERVIDOR, 0666) < 0)
     {
@@ -115,13 +117,13 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
+    write(1, "Servidor operacional ...\n", strlen("Servidor operacional ...\n"));
+
     char outputPath[128];
     strcpy(outputPath, argv[1]);
 
     char output_log_path[256];
     snprintf(output_log_path, sizeof(output_log_path), "%s/Commands.log", outputPath);
-
-    write(1, "Servidor operacional ...\n", strlen("Servidor operacional ...\n"));
 
     int logs = open(output_log_path, O_WRONLY | O_CREAT | O_APPEND, 0666);
     if (logs == -1)
@@ -140,9 +142,6 @@ int main(int argc, char *argv[])
     int flag = 1;
     int nr_comandos = 0;
 
-    start_queue(queue);
-    start_queue(received);
-
     while (flag)
     {
         Comandos comando_lido;
@@ -155,26 +154,27 @@ int main(int argc, char *argv[])
         }
         while ((read(fifo_servidor, &comando_lido, sizeof(Comandos)) > 0))
         {
-            if (strcmp(comando_lido.command, "exit") == 0)
+            if (strcmp(comando_lido.status, "EXECUTED") == 0)
+            {
+                remove_task_fromQueue(received, comando_lido); // remove o comando com o status EXECUTING
+                add_task_toQueue(received, comando_lido); // adiciona o comando com o status EXECUTED
+                nr_comandos--;
+                close(fifo_servidor);
+                continue; 
+            }
+            if (strcmp(comando_lido.command, "shutdown") == 0)
             {
                 write(1, "Terminando servidor...\n", 24);
                 flag = 0;
                 close(fifo_servidor);
                 break;
             }
-            if (strcmp(comando_lido.status, "EXECUTED") == 0)
-            {
-                remove_task_fromQueue(received, comando_lido); // remove o comando com o status EXECUTING
-                add_task_toQueue(received, comando_lido);      // adiciona o comando com o status EXECUTED
-                nr_comandos--;
-                printf("%d\n", nr_comandos);
-                continue;
-            }
             if (strcmp(comando_lido.command, "status") == 0)
             {
                 int fifo_cliente = open(CLIENTE, O_WRONLY);
                 atualizaStatus(fifo_cliente, received, queue);
                 close(fifo_cliente);
+                close(fifo_servidor);
                 continue;
             }
 
@@ -182,42 +182,38 @@ int main(int argc, char *argv[])
             {
                 int fifo_cliente = open(CLIENTE, O_WRONLY);
                 comando_lido.id = next_task_id();
-                int id = comando_lido.id;
-                write(fifo_cliente, &id, sizeof(int));
+                write(fifo_cliente, &comando_lido.id, sizeof(int));
                 close(fifo_cliente);
 
-                strcpy(comando_exec.status, "QUEUED");
+                strcpy(comando_lido.status, "QUEUED");
                 add_task_toQueue(queue, comando_lido);
-                nr_comandos++;
+                close(fifo_servidor);
+            }
+        }
+        if (nr_comandos < tasks_parallel && !is_queue_empty(queue))
+        {
+            comando_exec = queueGetNextTask(queue);
+            remove_task_fromQueue(queue, comando_exec);
 
-                if (nr_comandos <= tasks_parallel && !is_queue_empty(queue))
-                {
-                    comando_exec = queueGetNextTask(queue);
-                    remove_task_fromQueue(queue, comando_exec);
+            strcpy(comando_exec.status, "EXECUTING");
+            add_task_toQueue(received, comando_exec);
+            nr_comandos++;
 
-                    strcpy(comando_exec.status, "EXECUTING");
-                    add_task_toQueue(received, comando_exec);
+            pid_t pid = fork();
+            if (pid == 0)
+            {
+                comando_exec = executa_u(fifo_servidor, received, comando_exec, logs);
+                strcpy(comando_exec.status, "EXECUTED");
 
-                    pid_t pid = fork();
-                    if (pid == 0)
-                    {
-                        comando_exec = executa_u(fifo_servidor, received, comando_exec, logs);
-                        strcpy(comando_exec.status, "EXECUTED");
-
-                        close(fifo_servidor);
-                        fifo_servidor = open(SERVIDOR, O_WRONLY);
-                        write(fifo_servidor, &comando_exec, sizeof(Comandos));
-                        close(fifo_servidor);
-
-                        exit(EXIT_SUCCESS);
-                    }
-                    else if (pid == -1)
-                    {
-                        perror("Erro ao criar processo-filho");
-                        close(fifo_servidor);
-                        exit(EXIT_FAILURE);
-                    }
-                }
+                fifo_servidor = open(SERVIDOR, O_WRONLY);
+                write(fifo_servidor, &comando_exec, sizeof(Comandos));
+                close(fifo_servidor);
+                exit(EXIT_SUCCESS);
+            }
+            else if (pid == -1)
+            {
+                perror("Erro ao criar processo-filho");
+                exit(EXIT_FAILURE);
             }
         }
     }
