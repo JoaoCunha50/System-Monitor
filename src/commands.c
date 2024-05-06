@@ -1,12 +1,6 @@
 #include "../include/commands.h"
 #include "../include/queue.h"
 
-int sizeofComands()
-{
-    int tamanho = sizeof(Comandos);
-    return tamanho;
-}
-
 int compareCommands(const void *a, const void *b)
 {
     int compare = ((Comandos *)b)->estimated_time - ((Comandos *)a)->estimated_time;
@@ -47,7 +41,7 @@ int atualizaStatus(int fifo_cliente, Comandos *received, Comandos *queue)
     snprintf(status + strlen(status), sizeof(status), "\nScheduled\n\n");
     for (int i = 0; i < TAMANHO_LISTA; i++)
     {
-        bool is_empty = is_command_empty(received[i]);
+        bool is_empty = is_command_empty(queue[i]);
         if ((!is_empty) && strcmp(queue[i].status, "QUEUED") == 0)
         {
             snprintf(status + strlen(status), sizeof(status), "ID: %d Prog: %s\n", queue[i].id, queue[i].prog_name);

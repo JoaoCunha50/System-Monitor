@@ -14,6 +14,7 @@ void start_queue(Comandos *queue)
     {
         strcpy(queue[i].status, "QUEUED");
         queue[i].exec_time = 0;
+        queue[i].id = 0;
     }
 }
 
@@ -31,7 +32,7 @@ bool is_queue_empty(Comandos *queue)
 
 bool is_command_empty(Comandos queue)
 {
-    if (strcmp(queue.prog_name, "") == 0 && queue.id == 0)
+    if (queue.id == 0)
     {
         return true;
     }

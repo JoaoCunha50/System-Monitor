@@ -9,7 +9,7 @@ orchestrator: bin/orchestrator
 client: bin/client
 
 folders:
-	@mkdir -p src include obj bin tmp
+	@mkdir -p src include obj bin tmp logs tests
 
 bin/orchestrator: obj/orchestrator.o obj/queue.o obj/commands.o
 	$(CC) $(LDFLAGS) $^ -o $@
@@ -21,4 +21,4 @@ obj/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f obj/* tmp/* bin/client bin/orchestrator
+	rm -f obj/* tmp/* bin/client bin/orchestrator logs/*
