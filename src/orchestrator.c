@@ -80,7 +80,6 @@ Comandos executa_u(int fifo, Comandos *received, Comandos comando_exec, int logs
     free(lista_argumentos);
 
     return comando_exec;
-}
 
 void separaTarefas(char *prog, char *tarefas[], int* num_tarefas) {
     char *aux = strtok(prog, "|");
