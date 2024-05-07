@@ -164,7 +164,7 @@ Comandos executa_p(int fifo, Comandos *received, Comandos comando_exec, int logs
 
             close(fd[i][1]);
 
-        } else if (i < num_tarefas - 1) { // meio
+        } else if (i < num_tarefas - 1) {
             pipe(fd[i]);
             if((pid = fork()) == 0) {
 
@@ -187,7 +187,7 @@ Comandos executa_p(int fifo, Comandos *received, Comandos comando_exec, int logs
             close(fd[i - 1][0]);
             close(fd[i][1]);
 
-        } else { // ultimo
+        } else {
             if((pid = fork()) == 0) {
 
                 char pid_message[32];
