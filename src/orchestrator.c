@@ -82,36 +82,42 @@ Comandos executa_u(int fifo, Comandos *received, Comandos comando_exec, int logs
     return comando_exec;
 }
 
-void separaTarefas(char *prog, char *tarefas[], int* num_tarefas) {
+void separaTarefas(char *prog, char *tarefas[], int *num_tarefas)
+{
     char *aux = strtok(prog, "|");
     int i = 0;
 
-    for (; aux != NULL && i < 10; i++) {
-        while (*aux == ' '){
+    for (; aux != NULL && i < 10; i++)
+    {
+        while (*aux == ' ')
+        {
             aux++;
         }
         int len = strlen(aux);
-        while (len > 0 && aux[len - 1] == ' ') {
+        while (len > 0 && aux[len - 1] == ' ')
+        {
             aux[--len] = '\0';
         }
 
-        tarefas[i] = malloc((strlen(aux) + 1) * sizeof(char*));
+        tarefas[i] = malloc((strlen(aux) + 1) * sizeof(char *));
         strcpy(tarefas[i], aux);
         (*num_tarefas)++;
 
         aux = strtok(NULL, "|");
     }
 
-    for (; i < 10; i++) {
+    for (; i < 10; i++)
+    {
         tarefas[i] = NULL;
         i++;
     }
 }
 
-Comandos executa_p(int fifo, Comandos *received, Comandos comando_exec, int logs) {
-    char* tarefas[10];
+Comandos executa_p(int fifo, Comandos *received, Comandos comando_exec, int logs)
+{
+    char *tarefas[10];
     int num_tarefas = 0;
-    char* prog = strdup(comando_exec.prog_name);
+    char *prog = strdup(comando_exec.prog_name);
 
     separaTarefas(prog, tarefas, &num_tarefas);
 
@@ -128,14 +134,16 @@ Comandos executa_p(int fifo, Comandos *received, Comandos comando_exec, int logs
 
     strcpy(comando_exec.status, "EXECUTING");
 
-    for (int i = 0; i < num_tarefas; ++i) {
+    for (int i = 0; i < num_tarefas; ++i)
+    {
         char *aux = strdup(tarefas[i]);
         char *token = strtok(aux, " ");
         char *programa = token;
         char *lista_argumentos[11];
 
         int j = 0;
-        while (token != NULL && j < 10) {
+        while (token != NULL && j < 10)
+        {
             lista_argumentos[j] = token;
             token = strtok(NULL, " ");
             j++;
@@ -144,12 +152,14 @@ Comandos executa_p(int fifo, Comandos *received, Comandos comando_exec, int logs
 
         pid_t pid;
 
-        if (i == 0) {
+        if (i == 0)
+        {
             pipe(fd[i]);
-            if((pid = fork()) == 0) {
+            if ((pid = fork()) == 0)
+            {
 
                 dup2(fd[i][1], STDOUT_FILENO);
-                dup2(logs,STDERR_FILENO);
+                dup2(logs, STDERR_FILENO);
                 close(fd[i][0]);
                 close(fd[i][1]);
 
@@ -157,20 +167,24 @@ Comandos executa_p(int fifo, Comandos *received, Comandos comando_exec, int logs
 
                 perror("Entrada Inválida.\n");
                 _exit(1);
-            } else if (pid == -1) {
+            }
+            else if (pid == -1)
+            {
                 perror("fork()");
                 _exit(1);
             }
 
             close(fd[i][1]);
-
-        } else if (i < num_tarefas - 1) {
+        }
+        else if (i < num_tarefas - 1)
+        {
             pipe(fd[i]);
-            if((pid = fork()) == 0) {
+            if ((pid = fork()) == 0)
+            {
 
                 dup2(fd[i - 1][0], STDIN_FILENO);
                 dup2(fd[i][1], STDOUT_FILENO);
-                dup2(logs,STDERR_FILENO);
+                dup2(logs, STDERR_FILENO);
                 close(fd[i - 1][0]);
                 close(fd[i][0]);
                 close(fd[i][1]);
@@ -179,16 +193,20 @@ Comandos executa_p(int fifo, Comandos *received, Comandos comando_exec, int logs
 
                 perror("Entrada Inválida.\n");
                 _exit(1);
-            } else if (pid == -1) {
+            }
+            else if (pid == -1)
+            {
                 perror("fork()");
                 _exit(1);
             }
 
             close(fd[i - 1][0]);
             close(fd[i][1]);
-
-        } else {
-            if((pid = fork()) == 0) {
+        }
+        else
+        {
+            if ((pid = fork()) == 0)
+            {
 
                 char pid_message[32];
                 pid_t pid_child = getpid();
@@ -198,15 +216,17 @@ Comandos executa_p(int fifo, Comandos *received, Comandos comando_exec, int logs
                 write(fd1[1], &pid_child, sizeof(pid_child));
 
                 dup2(fd[i - 1][0], STDIN_FILENO);
-                dup2(logs,STDOUT_FILENO);
-                dup2(logs,STDERR_FILENO);
+                dup2(logs, STDOUT_FILENO);
+                dup2(logs, STDERR_FILENO);
                 close(fd[i - 1][0]);
 
                 execvp(programa, lista_argumentos);
 
                 perror("Entrada Inválida.\n");
                 _exit(1);
-            } else if (pid == -1) {
+            }
+            else if (pid == -1)
+            {
                 perror("fork()");
                 _exit(1);
             }
@@ -215,7 +235,8 @@ Comandos executa_p(int fifo, Comandos *received, Comandos comando_exec, int logs
         }
     }
 
-    for (int i = 0; i < num_tarefas; i++) {
+    for (int i = 0; i < num_tarefas; i++)
+    {
         wait(NULL);
     }
 
@@ -233,7 +254,8 @@ Comandos executa_p(int fifo, Comandos *received, Comandos comando_exec, int logs
 
     atualizaLogs(comando_exec, logs);
 
-    for (int i = 0; i < num_tarefas; i++) {
+    for (int i = 0; i < num_tarefas; i++)
+    {
         free(tarefas[i]);
     }
 
@@ -262,7 +284,17 @@ int main(int argc, char *argv[])
     if (argc < 3)
     {
         write(2, "Invalid number of arguments.\n", 30);
-        return 1;
+        unlink(SERVIDOR);
+        unlink(CLIENTE);
+        exit(EXIT_FAILURE);
+    }
+
+    if (strcmp(argv[3], "FCFS") != 0)
+    {
+        write(1, "Por favor escreva uma política válida (FCFS)\n", strlen("Por favor escreva uma política válida (FCFS)\n"));
+        unlink(SERVIDOR);
+        unlink(CLIENTE);
+        exit(EXIT_FAILURE);
     }
 
     // Para obter o máximo de tarefas
@@ -272,6 +304,8 @@ int main(int argc, char *argv[])
     {
         strcpy(error, "Please introduce a valid value");
         write(2, error, strlen(error));
+        unlink(SERVIDOR);
+        unlink(CLIENTE);
         exit(EXIT_FAILURE);
     }
 
@@ -315,10 +349,10 @@ int main(int argc, char *argv[])
             if (strcmp(comando_lido.status, "EXECUTED") == 0)
             {
                 remove_task_fromQueue(received, comando_lido); // remove o comando com o status EXECUTING
-                add_task_toQueue(received, comando_lido); // adiciona o comando com o status EXECUTED
+                add_task_toQueue(received, comando_lido);      // adiciona o comando com o status EXECUTED
                 nr_comandos--;
                 close(fifo_servidor);
-                continue; 
+                continue;
             }
             if (strcmp(comando_lido.command, "shutdown") == 0)
             {
@@ -360,9 +394,12 @@ int main(int argc, char *argv[])
             pid_t pid = fork();
             if (pid == 0)
             {
-                if (strcmp(comando_exec.flag, "-u") == 0) {
+                if (strcmp(comando_exec.flag, "-u") == 0)
+                {
                     comando_exec = executa_u(fifo_servidor, received, comando_exec, logs);
-                } else if (strcmp(comando_exec.flag, "-p") == 0) {
+                }
+                else if (strcmp(comando_exec.flag, "-p") == 0)
+                {
                     comando_exec = executa_p(fifo_servidor, received, comando_exec, logs);
                 }
                 strcpy(comando_exec.status, "EXECUTED");
